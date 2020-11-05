@@ -1,7 +1,8 @@
-import domain.{Dag, GitRepoSettings}
+import domain.{Dag, GitRepoSettings, Project}
 import fs2.Stream
 import fs2.text.utf8Encode
 import git.Git
+import crawler.Crawler
 import zio._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -19,12 +20,13 @@ package object api {
 
   case class ApiException(status:Status, body:String) extends Exception(status.toString() + body)
 
-  def buildRoutes(dsl:Http4sDsl[Task]):URIO[Storage with Git, HttpApp[Task]] = for {
+  def buildRoutes(dsl:Http4sDsl[Task]):URIO[Storage with Git with Crawler, HttpApp[Task]] = for {
     storage <- ZIO.access[Storage](_.get)
     git     <- ZIO.access[Git](_.get)
-  } yield routes(dsl, storage, git)
+    crawler <- ZIO.access[Crawler](_.get)
+  } yield routes(dsl, storage, git, crawler)
 
-  protected def routes(dsl:Http4sDsl[Task], repo: storage.Service, theGit: git.Service):HttpApp[Task] = {
+  protected def routes(dsl:Http4sDsl[Task], repo: storage.Service, theGit: git.Service, theCrawler: crawler.Service):HttpApp[Task] = {
     import dsl._
 
     val routes:PartialFunction[Request[Task], Task[Response[Task]]] = {
@@ -55,13 +57,28 @@ package object api {
 
         val testDag = Dag("project", "test", content)
         val testRepositorySettings = GitRepoSettings(
-          "https://gitlab.pimpay.ru/api/v4/projects/294/repository/files",
+          "https://gitlab.pimpay.ru/api/v4/projects/294/repository",
           "master",
           "dags",
           "RtPpsq7iiFv2xQiDdU8J"
         )
 
         theGit.syncDag(testDag, testRepositorySettings) *> Ok("kukujopa")
+      }
+      case GET -> Root / "dagsList" => {
+
+        val testRepositorySettings = GitRepoSettings(
+          "https://gitlab.pimpay.ru/api/v4/projects/294/repository",
+          "master",
+          "dags",
+          "RtPpsq7iiFv2xQiDdU8J"
+        )
+        val project = Project("core", "token", "fetchEndpoint", testRepositorySettings)
+
+        for {
+          files <- theCrawler.fetch(project)
+          string <- Ok(files.asJson.noSpaces)
+        } yield (string)
       }
 
 
