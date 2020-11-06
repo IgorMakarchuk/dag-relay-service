@@ -23,15 +23,12 @@ package object modules {
 
     case class ProjectNameDag (project: Option[String], nameDag: Option[String])
 
-    override def fetch(project: Project): Task[Map[String, String]] = fetchFile(project)
-
-    def fetchFile(project: Project): Task[Map[String, String]] = for {
+    override def fetch(project: Project): Task[Map[String, String]] = for {
       files       <- getFiles(project.git)
       names       = getFileNames(files.body)
       raws        <- ZIO.collectAll(names.map(fileName => getRawFile(project.git, fileName)))
       raws_files  = raws.zipWithIndex.map(x => names(x._2) -> x._1.body).toMap
       mapDags     = names.map(fileName => {
-//                            val sepName = separateName(fileName)
                             fileName -> raws_files(fileName)
                           }).toMap
     } yield (mapDags)
