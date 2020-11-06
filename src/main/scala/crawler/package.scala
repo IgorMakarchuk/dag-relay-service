@@ -7,7 +7,7 @@ package object crawler {
   type Crawler = Has[Service]
 
   trait Service {
-    def fetch(project:Project):Task[Map[String, Dag]]
+    def fetch(project:Project):Task[Map[String, String]]
   }
 
   val live: ZLayer[Any, Nothing, Crawler] = ZLayer.succeed(new CrawlerLive)

@@ -23,17 +23,17 @@ package object modules {
 
     case class ProjectNameDag (project: Option[String], nameDag: Option[String])
 
-    override def fetch(project: Project): Task[Map[String, Dag]] = fetchFile(project)
+    override def fetch(project: Project): Task[Map[String, String]] = fetchFile(project)
 
-    def fetchFile(project: Project): Task[Map[String, Dag]] = for {
-      files <- getFiles(project.git)
-      names <- ZIO.succeed(getFileNames(files.body))
-      raws <- ZIO.collectAll(names.map(fileName => getRawFile(project.git, fileName)))
-      raws_files <- Task(raws.zipWithIndex.map(x => names(x._2) -> x._1.body).toMap)
-      mapDags <- ZIO.succeed(names.map(fileName => {
-                            val sepName = separateName(fileName)
-                            fileName -> Dag(sepName.project.get, sepName.nameDag.get, raws_files(fileName))
-                          }).toMap)
+    def fetchFile(project: Project): Task[Map[String, String]] = for {
+      files       <- getFiles(project.git)
+      names       = getFileNames(files.body)
+      raws        <- ZIO.collectAll(names.map(fileName => getRawFile(project.git, fileName)))
+      raws_files  = raws.zipWithIndex.map(x => names(x._2) -> x._1.body).toMap
+      mapDags     = names.map(fileName => {
+//                            val sepName = separateName(fileName)
+                            fileName -> raws_files(fileName)
+                          }).toMap
     } yield (mapDags)
 
 
@@ -67,12 +67,12 @@ package object modules {
           case None => Nil
         }
     }
-    def separateName(string: String): ProjectNameDag = {
-      val parseName = Try("([\\w]*?)_([\\w]*)\\.yaml".r.unapplySeq(string).get)
-      if (parseName.isSuccess) ProjectNameDag(Some(parseName.get(0)), Some(parseName.get(1)))
-      else ProjectNameDag(None, None)
-
-    }
+//    def separateName(string: String): ProjectNameDag = {
+//      val parseName = Try("([\\w]*?)_([\\w]*)\\.yaml".r.unapplySeq(string).get)
+//      if (parseName.isSuccess) ProjectNameDag(Some(parseName.get(0)), Some(parseName.get(1)))
+//      else ProjectNameDag(None, None)
+//
+//    }
     def createPath(path: String, fileName: String): String = {
       URLEncoder.encode(s"${path}/${fileName}", "UTF-8")
     }

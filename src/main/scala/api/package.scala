@@ -65,7 +65,7 @@ package object api {
 
         theGit.syncDag(testDag, testRepositorySettings) *> Ok("kukujopa")
       }
-      case GET -> Root / "dagsList" => {
+      case GET -> Root / "projects" / projectName / "dags"  => {
 
         val testRepositorySettings = GitRepoSettings(
           "https://gitlab.pimpay.ru/api/v4/projects/294/repository",
@@ -73,11 +73,12 @@ package object api {
           "dags",
           "RtPpsq7iiFv2xQiDdU8J"
         )
-        val project = Project("core", "token", "fetchEndpoint", testRepositorySettings)
+        val project = Project(projectName, "token", "fetchEndpoint", testRepositorySettings)
 
         for {
           files <- theCrawler.fetch(project)
-          string <- Ok(files.asJson.noSpaces)
+          string <- Ok(files.asJson.toString())
+
         } yield (string)
       }
 
